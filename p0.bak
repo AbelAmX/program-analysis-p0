@@ -236,40 +236,19 @@
     ;; handles single-argument lambda (throws away rest of arguments).
     [`(lambda (,vars ...) ,body)
      ;; Copy the environment mutably
-     (lambda l 
-        (let ([env-copy (make-hash
+     (lambda (x) 
+       (let ([env-copy (make-hash
                         (hash-map env
                                   (lambda (x y) (cons x y))))])
-          (define (check-list var lis)
-            (if (empty? var)
-                env-copy
-                (begin
-                 (hash-set! env-copy (first var) (first lis))
-                 (check-list (rest var) (rest lis)))))
-         (interp-hw1 body (check-list vars l)))) ]
+         (hash-set! env-copy (first vars) x)         
+         (interp-hw1 body env-copy)))]
     ;; TODO: implement let* correctly
-    [`(let* ([,(? symbol? li) ,(? expr? lbody)] ...)
+    [`(let* ([,(? symbol?) ,(? expr?)] ...)
         ,(? expr? body))
-     (define (let-seq var exp )
-       (if (empty? var)
-            env
-            (let* ([vars (car var)]
-                   [exps (car exp)]
-                   [b #f]
-                   [inp (begin (hash-set! env vars b) ((lambda (x) (interp-hw1 x env)) exps))])
-                   (begin
-                      (hash-set! env vars inp)
-                      (let-seq (cdr var) (cdr exp))))))
-     (interp-hw1 body (let-seq li lbody))]
+     'undefined]
     ;; TODO: handle multi-argument letrec (still only one f)
     [`(letrec ([,(? symbol? f) (lambda (,f-args ...) ,f-body)])
         ,(? expr? body))
-     (define (check-l var lis envx)
-                                 (if (empty? var)
-                                     envx
-                                     (begin
-                                       (hash-set! envx (car var) (car lis))
-                                       (check-l (cdr var) (cdr lis) envx))))
      ;; Make a mutable copy of the hash table
      (let ([env-copy (make-hash
                       (hash-map env
@@ -278,7 +257,11 @@
        ;; rest of the arguments past the first...
        (hash-set! env-copy
                   f
-                  (lambda x (interp-hw1 f-body (check-l f-args x env-copy) )))
+                  (lambda (x) (interp-hw1
+                               f-body
+                               (begin
+                                 (hash-set! env-copy (first f-args) x)
+                                 env-copy))))
        ;; Now interpret the body with this updated (mutable) env
        (interp-hw1 body env-copy))]
     ;; Builtins! (Once you get multi-argument application to work, you
@@ -296,18 +279,17 @@
     ;; below.
     [`(match ,(? expr? e) [,match-patterns ,match-bodies] ...)
      (eval-match-statements match-patterns match-bodies (interp-hw1 e env) env)]
-     ;; If
+    ;; TODO. Application: right now this only handles single-argument
+    ;; application (throws away the rest of e-args).
+    [`(,(? expr? e0) ,(? expr? e-args) ...)
+     ((interp-hw1 e0 env) (interp-hw1 (first e-args) env))]
+    ;; If
     [`(if ,(? expr? guard)
           ,(? expr? etrue)
           ,(? expr? efalse)) 
      (if (interp-hw1 guard env)
          (interp-hw1 etrue env)
-         (interp-hw1 efalse env))]
-    ;; TODO. Application: right now this only handles single-argument
-    ;; application (throws away the rest of e-args).
-    [`(,(? expr? e0) ,(? expr? e-args) ...)
-     (apply (interp-hw1 e0 env) (map (lambda (x) (interp-hw1 x env)) e-args))]))
-   
+         (interp-hw1 efalse env))]))
 
 ;; TODO: extend this function.  Basic idea: translate each match
 ;; pattern as a lambda that returns *either* an updated environment
@@ -355,18 +337,7 @@
       ;; index i and ith element of the list x. If it does, return
       ;; that updated environment. You can do this easily using foldl.
       [`(list ,patterns ...)
-       (define (check-l patt lis leng envx)
-         (let ([env-lis ((compile-match-statement (car patt) envx) (car lis) )]
-               [len (- leng 1)])
-              (if env-lis
-                  (if (= len 0)
-                      env-lis
-                      (check-l (cdr patt) (cdr lis) len env-lis))  
-                   #f)))
-       (lambda (x)
-         (if (and (list? x) (equal? (length x) (length patterns)))
-             (check-l patterns x (length patterns) env)
-             #f))]))
+       (lambda (x) #t)]))
 
   ;; Recursively try each pattern in order until we find one that
   ;; applies. If there are no more patterns, throw an error.
@@ -400,7 +371,7 @@
     ;; TODO: Write two different examples here that use letrec with more
     ;; than one argument. These should be small (but interesting)
     ;; recursive functions. You should write them in plain Racket first.
-    (letrec-multiarg-0 (letrec ([f (lambda (a c) (if (= c 1) 1 (+ c (* a (f (- a 1) (- c 1))))))]) (f 4 5))  129)
+    (letrec-multiarg-0 #t #t)
     (letrec-multiarg-1 #t #t)
     
     ;; Match statement examples    
