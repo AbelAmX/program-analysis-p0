@@ -27,7 +27,7 @@
     [else #f]))
 
 (define (builtin? x)
-  (set-member? (set '+ '- '* '/ 'cons 'car 'cdr 'list 'list? '= 'empty? 'number? 'string? 'string-append 'string-length 'length) x))
+  (set-member? (set '+ '- '* '/ 'cons 'car 'cdr 'list 'list? '= '< 'empty? 'number? 'string? 'string-append 'string-length 'length) x))
 
 ; Mapping from symbols to the primitive built-in functions within
 ; Racket.
@@ -40,6 +40,7 @@
                    (cons 'car car)
                    (cons 'cdr cdr)
                    (cons 'list list)
+                   (cons '< <)
                    (cons '= equal?)
                    (cons 'empty? empty)
                    (cons 'number? number?)
@@ -401,7 +402,7 @@
     ;; than one argument. These should be small (but interesting)
     ;; recursive functions. You should write them in plain Racket first.
     (letrec-multiarg-0 (letrec ([f (lambda (a c) (if (= c 1) 1 (+ c (* a (f (- a 1) (- c 1))))))]) (f 4 5))  129)
-    (letrec-multiarg-1 #t #t)
+    (letrec-multiarg-1 (letrec ([f (lambda (x y ) (if (= y 1) 1 (if (= x 1) 1 (if (< y x) (* x (f (- x 1) y )) (+ y (f x (- y 1)))))))]) (f 5 4 ))260)
     
     ;; Match statement examples    
     (match-0 (match 5
